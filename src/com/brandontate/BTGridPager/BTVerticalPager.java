@@ -14,14 +14,20 @@ import android.view.View;
  */
 public class BTVerticalPager extends ViewPager {
 
-    public BTVerticalPager(Context context) {
+    BTFragmentGridPager mGridPager;
+
+    public BTVerticalPager(Context context, BTFragmentGridPager gridPager) {
         super(context);
         init();
+
+        mGridPager = gridPager;
     }
 
-    public BTVerticalPager(Context context, AttributeSet attrs) {
+    public BTVerticalPager(Context context, AttributeSet attrs, BTFragmentGridPager gridPager) {
         super(context, attrs);
         init();
+
+        mGridPager = gridPager;
     }
 
     private void init(){
@@ -32,6 +38,21 @@ public class BTVerticalPager extends ViewPager {
         setOverScrollMode(OVER_SCROLL_NEVER);
     }
 
+    @Override
+    protected void onPageScrolled(int position, float offset, int offsetPixels) {
+        super.onPageScrolled(position, offset, offsetPixels);
+
+        if (offset == 0  && mGridPager.shouldReset) {
+            getRootView().post(new Runnable() {
+                @Override
+                public void run() {
+                    mGridPager.shouldReset = false;
+                    mGridPager.resetAdapter();
+                }
+            });
+        }
+    }
+
     private class VerticalPageTransformer implements ViewPager.PageTransformer {
 
         @Override
@@ -39,24 +60,25 @@ public class BTVerticalPager extends ViewPager {
             int pageWidth = view.getWidth();
             int pageHeight = view.getHeight();
 
-            if (position < -1) { // [-Infinity,-1)
-                // This page is way off-screen to the left.
-                view.setAlpha(0);
-
-            } else if (position <= 1) { // [-1,1]
-                view.setAlpha(1);
-
+            view.setAlpha(1);
+//
+//            if (position < -1 && !mGridPager.shouldReset) { // [-Infinity,-1)
+//                // This page is way off-screen to the left.
+//                view.setAlpha(0);
+//
+//            }
+            if (position >= -1 && position <= 1) { // [-1,1]
                 // Counteract the default slide transition
                 view.setTranslationX(pageWidth * -position);
 
                 //set Y position to swipe in from top
                 float yPosition = position * pageHeight;
                 view.setTranslationY(yPosition);
-
-            } else { // (1,+Infinity]
-                // This page is way off-screen to the right.
-                view.setAlpha(0);
             }
+//            } else if (!mGridPager.shouldReset) { // (1,+Infinity]
+//                // This page is way off-screen to the right.
+//                view.setAlpha(0);
+//            }
         }
     }
 

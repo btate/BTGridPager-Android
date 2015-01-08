@@ -28,6 +28,18 @@ public class BTVerticalPagerFragment extends Fragment {
     /** The start page when the pager is loaded. */
     private int mStartPage = 0;
 
+    private BTFragmentGridPager mGridPager;
+
+    public BTVerticalPagerFragment(){
+
+    }
+
+//    public BTVerticalPagerFragment (BTFragmentGridPager gridPager) {
+//
+//        mGridPager = gridPager;
+//    }
+
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -36,20 +48,26 @@ public class BTVerticalPagerFragment extends Fragment {
         view.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
         view.setId(1);
 
-        mPager = new BTVerticalPager(getActivity());
-        mPager.setId(2);
-        mPager.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
-        mPager.setAdapter(mVerticalPagerAdapter);
-        mPager.setCurrentItem(mStartPage);
-        mPager.setOnPageChangeListener(mPageChangeListener);
+        if (mGridPager != null) {
+            mPager = new BTVerticalPager(getActivity(), mGridPager);
+            mPager.setId(2);
+            mPager.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
+            mPager.setAdapter(mVerticalPagerAdapter);
+            mPager.setCurrentItem(mStartPage);
+            mPager.setOnPageChangeListener(mPageChangeListener);
 
-        view.addView(mPager);
+            view.addView(mPager);
+        }
 
         return view;
     }
 
     public FragmentStatePagerAdapter getVerticalPagerAdapter() {
         return mVerticalPagerAdapter;
+    }
+
+    public void setGridPager(BTFragmentGridPager gridPager){
+        mGridPager = gridPager;
     }
 
     public void setVerticalPagerAdapter(FragmentStatePagerAdapter verticalPagerAdapter) {

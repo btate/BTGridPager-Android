@@ -8,6 +8,7 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
+import android.view.View;
 
 
 /**
@@ -60,10 +61,13 @@ public class BTFragmentGridPager extends ViewPager {
     /** How many views to load on each side of the central view. */
     private int mGridPadding = 1;
 
+    boolean shouldReset = false;
+
     public BTFragmentGridPager(Context context) {
         super(context);
         init();
     }
+
 
     /**
      * Used to inflate the Workspace from XML.
@@ -89,19 +93,19 @@ public class BTFragmentGridPager extends ViewPager {
     //*****************************************************
 
     private boolean canScrollLeft(){
-        return !(mCurrentIndex.getCol() == 0 && (0 == (mWrappingFlags & GRID_WRAP_LEFT)));
+        return  mGridPagerAdapter != null && !(mCurrentIndex.getCol() == 0 && (0 == (mWrappingFlags & GRID_WRAP_LEFT)));
     }
 
     private boolean canScrollRight(){
-        return !(mCurrentIndex.getCol() == (mGridPagerAdapter.columnCount(mCurrentIndex.getRow()) - 1) && (0 == (mWrappingFlags & GRID_WRAP_RIGHT)));
+        return mGridPagerAdapter != null && !(mCurrentIndex.getCol() == (mGridPagerAdapter.columnCount(mCurrentIndex.getRow()) - 1) && (0 == (mWrappingFlags & GRID_WRAP_RIGHT)));
     }
 
     private boolean canScrollUp(){
-        return !(mCurrentIndex.getRow() == 0 && (0 == (mWrappingFlags & GRID_WRAP_UP)));
+        return  mGridPagerAdapter != null && !(mCurrentIndex.getRow() == 0 && (0 == (mWrappingFlags & GRID_WRAP_UP)));
     }
 
     private boolean canScrollDown(){
-        return !(mCurrentIndex.getRow() == (mGridPagerAdapter.rowCount() - 1) && (0 == (mWrappingFlags & GRID_WRAP_DOWN)));
+        return  mGridPagerAdapter != null && !(mCurrentIndex.getRow() == (mGridPagerAdapter.rowCount() - 1) && (0 == (mWrappingFlags & GRID_WRAP_DOWN)));
     }
 
     private GridIndex wrapGridIndex(GridIndex index){
@@ -113,7 +117,6 @@ public class BTFragmentGridPager extends ViewPager {
         else if(newRow >= mGridPagerAdapter.rowCount())
             newRow = (mGridPagerAdapter.rowCount() - newRow);
 
-
         int newCol = index.getCol();
 
         if (newCol < 0)
@@ -122,17 +125,19 @@ public class BTFragmentGridPager extends ViewPager {
             newCol = (mGridPagerAdapter.columnCount(newRow) - newCol);
 
         return new GridIndex(newRow, newCol);
-
     }
 
     /**
      *   Completely resets the adapter with updated current grid index.
+     *
+     *   No access modifier -- package-private
      */
-    private void resetAdapter(){
+    void resetAdapter(){
 
         // Clear old on page change listener to avoid unwanted actions
         setOnPageChangeListener(null);
-        setAdapter(new FragmentGridHorizontalPagerAdapter( ((FragmentActivity) getContext()).getSupportFragmentManager()) );
+
+        setAdapter(new FragmentGridHorizontalPagerAdapter(((FragmentActivity) getContext()).getSupportFragmentManager(), this));
 
         if (!canScrollLeft())
             setCurrentItem(0, false);
@@ -157,9 +162,30 @@ public class BTFragmentGridPager extends ViewPager {
 
                 mCurrentIndex = wrapGridIndex( new GridIndex( (0 != (mResetFlags & GRID_RESET_COL) ) ? 0 : mCurrentIndex.getRow() ,  newCol) );
 
-                resetAdapter();
+                shouldReset = true;
             }
         });
+    }
+
+    @Override
+    protected void onPageScrolled(int position, float offset, int offsetPixels) {
+        super.onPageScrolled(position, offset, offsetPixels);
+
+        if (offset == 0 && shouldReset) {
+            getRootView().post(new Runnable() {
+                @Override
+                public void run() {
+                    shouldReset = false;
+                    resetAdapter();
+                }
+            });
+
+        }
+    }
+
+    @Override
+    protected boolean canScroll(View v, boolean checkV, int dx, int x, int y) {
+        return false;
     }
 
     //*****************************************************
@@ -203,11 +229,13 @@ public class BTFragmentGridPager extends ViewPager {
     public class FragmentGridHorizontalPagerAdapter extends FragmentStatePagerAdapter{
 
         FragmentManager fm;
+        BTFragmentGridPager mGridPager;
 
-        public FragmentGridHorizontalPagerAdapter(FragmentManager fm) {
+        public FragmentGridHorizontalPagerAdapter(FragmentManager fm, BTFragmentGridPager gridPager) {
             super(fm);
 
             this.fm = fm;
+            this.mGridPager = gridPager;
         }
 
         @Override
@@ -229,6 +257,7 @@ public class BTFragmentGridPager extends ViewPager {
             if (vpFragFlag){
 
                 BTVerticalPagerFragment vpFragment = new BTVerticalPagerFragment();
+                vpFragment.setGridPager(mGridPager);
 
                 vpFragment.setVerticalPagerAdapter(new FragmentStatePagerAdapter(fm){
                     @Override
@@ -295,7 +324,7 @@ public class BTFragmentGridPager extends ViewPager {
 
                         mCurrentIndex = wrapGridIndex(new GridIndex(newRow, newCol));
 
-                        resetAdapter();
+                        shouldReset = true;
 
                     }
 
@@ -374,6 +403,19 @@ public class BTFragmentGridPager extends ViewPager {
                     "mRow=" + mRow +
                     ", mCol=" + mCol +
                     '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            GridIndex gridIndex = (GridIndex) o;
+
+            if (mCol != gridIndex.mCol) return false;
+            if (mRow != gridIndex.mRow) return false;
+
+            return true;
         }
     }
 }
